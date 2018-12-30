@@ -1,0 +1,83 @@
+Sub CalculatePercentageBasedOnMigratedConsumers() ' Consumer names must be SORTED alphabetically for this to WORK!!!
+
+    Dim RealCatalogSheet, MigratedServicesSheet, YetToMigrateSheet, ConsumerStatsSheet As Worksheet
+    Dim MigratedServicesRange, RealCatalogRange, YetToMigrateRange, ConsumerStatsRange As Range
+    Dim MigratedServicesDict, ConsumerNamesDict, ConsumerPercentagesDict, ConsumerStats As Dictionary
+    Dim RowNumber, ServiceCount, MatchCount As Integer
+    Dim ServiceAndDomain As String
+    
+    Set MigratedServicesSheet = ActiveWorkbook.Sheets("Migrated")
+    Set RealCatalogSheet = ActiveWorkbook.Sheets("Real_Catalog")
+    Set YetToMigrateSheet = ActiveWorkbook.Sheets("YetToMigrate")
+    Set ConsumerStatsSheet = ActiveWorkbook.Sheets("Consumer_Stats")
+    Set MigratedServicesDict = New Dictionary
+    Set ConsumerNamesDict = New Dictionary
+    Set ConsumerPercentagesDict = New Dictionary
+    Set ConsumerStatsDict = New Dictionary
+    
+    RowNumber = 1
+    For Each MigratedServicesRange In MigratedServicesSheet.Rows
+        If RowNumber > 1 And MigratedServicesSheet.Cells(MigratedServicesRange.Row, 1).Value <> "" Then ' Skip first row and end when row is blank
+        ServiceAndDomain = MigratedServicesSheet.Cells(MigratedServicesRange.Row, 2).Value + ":" + MigratedServicesSheet.Cells(MigratedServicesRange.Row, 3).Value
+            If Not MigratedServicesDict.Exists(ServiceAndDomain) Then
+                MigratedServicesDict.Add ServiceAndDomain, "SOMEVALUE" 'Just add unique combination of Service And Domain pairs as keys
+            End If
+        End If
+        RowNumber = RowNumber + 1
+    Next MigratedServicesRange
+   
+    RowNumber = 1
+    ServiceCount = 0
+    For Each RealCatalogRange In RealCatalogSheet.Rows
+        If RowNumber > 1 And RealCatalogSheet.Cells(RealCatalogRange.Row, 1).Value <> "" Then ' Skip first row and end when row is blank
+            Consumer_Name = RealCatalogSheet.Cells(RealCatalogRange.Row, 1).Value
+            ServiceAndDomain = RealCatalogSheet.Cells(RealCatalogRange.Row, 2).Value + ":" + RealCatalogSheet.Cells(RealCatalogRange.Row, 3).Value
+            ServiceCount = ServiceCount + 1
+                        
+            If Not ConsumerNamesDict.Exists(Consumer_Name) Then ' New Consumer
+                ConsumerNamesDict.Add Consumer_Name, "0.0" ' create unique list of consumer names
+                ServiceCount = 1
+                MatchCount = 0
+            End If
+            
+            If ConsumerNamesDict.Exists(Consumer_Name) Then ' Existing Consumer0
+                If MigratedServicesDict.Exists(ServiceAndDomain) Then
+                    MatchCount = MatchCount + 1
+                    PercentageOverlap = Round(MatchCount / ServiceCount * 100, 2)
+                    ConsumerNamesDict.Remove (Consumer_Name)
+                    ConsumerNamesDict.Add Consumer_Name, PercentageOverlap
+                End If
+            End If
+        End If
+        RowNumber = RowNumber + 1
+    Next RealCatalogRange
+    
+    For Each ConsumerStatsRange In ConsumerStatsSheet.Rows
+        If ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 1).Value <> "" Then
+            Consumer_Name = ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 1).Value
+            Combined_Value = CStr(ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 3).Value) + ":" + CStr(ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 4).Value) + ":" + CStr(ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 6).Value) + ":" + CStr(ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 7).Value) + ":" + CStr(ConsumerStatsSheet.Cells(ConsumerStatsRange.Row, 10).Value)
+            If Not ConsumerStatsDict.Exists(Consumer_Name) Then
+                ConsumerStatsDict.Add Consumer_Name, Combined_Value
+            End If
+        End If
+    Next ConsumerStatsRange
+    
+ 
+    
+    RowNumber = 2
+    For Each KeyValue In ConsumerNamesDict
+        YetToMigrateSheet.Cells(RowNumber, 1).Value = KeyValue
+        YetToMigrateSheet.Cells(RowNumber, 2).Value = ConsumerNamesDict(KeyValue)
+        
+        If ConsumerStatsDict.Exists(KeyValue) Then
+            SplitValue = Split(ConsumerStatsDict(KeyValue), ":")
+            YetToMigrateSheet.Cells(RowNumber, 3).Value = SplitValue(0)
+            YetToMigrateSheet.Cells(RowNumber, 4).Value = SplitValue(1)
+            YetToMigrateSheet.Cells(RowNumber, 5).Value = SplitValue(2)
+            YetToMigrateSheet.Cells(RowNumber, 6).Value = SplitValue(3)
+            YetToMigrateSheet.Cells(RowNumber, 7).Value = SplitValue(4)
+        End If
+    RowNumber = RowNumber + 1
+    Next KeyValue
+    
+End Sub
