@@ -1,2 +1,2 @@
 This is a sample file
-Added second line
+updated second line
